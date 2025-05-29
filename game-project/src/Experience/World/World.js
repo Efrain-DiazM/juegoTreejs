@@ -736,7 +736,6 @@ export default class World {
                 await this.loader.loadFromURL(apiUrl);
             }
 
-
             this.loader.prizes.forEach(p => {
                 if (p.model) p.model.visible = (p.role !== 'finalPrize');
                 p.collected = false;
