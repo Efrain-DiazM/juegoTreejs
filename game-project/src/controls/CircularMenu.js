@@ -141,7 +141,7 @@ export default class CircularMenu {
     Object.assign(this.playersLabel.style, {
       position: 'fixed',
       top: '16px',
-      left: '140px',
+      left: '155px',
       fontSize: '16px',
       fontWeight: 'bold',
       background: 'rgba(0,0,0,0.6)',
@@ -161,7 +161,7 @@ export default class CircularMenu {
     Object.assign(this.levelLabel.style, {
       position: 'fixed',
       top: '16px',
-      left: '308px',
+      left: '318px',
       fontSize: '16px',
       fontWeight: 'bold',
       background: 'rgba(0,0,0,0.6)',
