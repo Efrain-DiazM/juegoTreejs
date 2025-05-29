@@ -703,28 +703,49 @@ export default class World {
             const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
             const apiUrl = `${backendUrl}/api/blocks?level=${level}`;
 
-            const res = await fetch(apiUrl);
-            const data = await res.json();
+            let data;
+            try {
+                const res = await fetch(apiUrl);
+                if (!res.ok) throw new Error('Error desde API');
+                data = await res.json();
+                console.log(`📦 Datos del nivel ${level} cargados desde API`);
+            } catch (error) {
+                console.warn(`⚠️ No se pudo conectar con el backend. Usando datos locales para nivel ${level}...`);
+                const localRes = await fetch('/data/threejs_blocks.blocks.json');
+                const allBlocks = await localRes.json();
 
-            const blocks = data.blocks || [];
+                const filteredBlocks = allBlocks.filter(b => b.level === level);
+
+                data = {
+                    blocks: filteredBlocks,
+                    spawnPoint: { x: -17, y: 1.5, z: -67 } // valor por defecto si no viene en JSON
+                };
+            }
+
             const spawnPoint = data.spawnPoint || { x: 5, y: 1.5, z: 5 };
-
             this.points = 0;
             this.robot.points = 0;
-            this.totalDefaultCoins = undefined;
             this.finalPrizeActivated = false;
             this.experience.menu.setStatus?.(`🎖️ Puntos: ${this.points}`);
 
-            await this.loader.loadFromURL(apiUrl);
+            if (data.blocks) {
+                const preciseRes = await fetch('/config/precisePhysicsModels.json');
+                const preciseModels = await preciseRes.json();
+                this.loader._processBlocks(data.blocks, preciseModels);
+            } else {
+                await this.loader.loadFromURL(apiUrl);
+            }
+
 
             this.loader.prizes.forEach(p => {
-                console.log(`🧪 Premio cargado: role=${p.role}, visible=${p.pivot.visible}`);
-                if (p.pivot) p.pivot.visible = (p.role !== 'finalPrize');
+                if (p.model) p.model.visible = (p.role !== 'finalPrize');
                 p.collected = false;
             });
 
-            this.resetRobotPosition(spawnPoint);
+            this.totalDefaultCoins = this.loader.prizes.filter(p => p.role === "default").length;
+            console.log(`🎯 Total de monedas default para el nivel ${level}: ${this.totalDefaultCoins}`);
 
+            this.resetRobotPosition(spawnPoint);
             console.log(`✅ Nivel ${level} cargado con spawn en`, spawnPoint);
         } catch (error) {
             console.error('❌ Error cargando nivel:', error);

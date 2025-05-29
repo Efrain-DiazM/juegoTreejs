@@ -139,7 +139,7 @@ export default class Robot {
             return
         }
         //No permitir que el robot salga del escenario
-        if (this.body.position.y > 10) {
+        if (this.body.position.y > 20) {
             console.warn('⚠️ Robot fuera del escenario. Reubicando...')
             this.body.position.set(0, 1.2, 0)
             this.body.velocity.set(0, 0, 0)

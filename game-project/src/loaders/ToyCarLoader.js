@@ -12,7 +12,8 @@ export default class ToyCarLoader {
         this.prizes = [];
     }
 
-    async loadFromAPI() {
+    async loadFromAPI(level = 1) {
+        console.log(`🔄 Cargando bloques para el nivel ${level}...`);
         try {
             const listRes = await fetch('/config/precisePhysicsModels.json');
             const precisePhysicsModels = await listRes.json();
@@ -30,7 +31,9 @@ export default class ToyCarLoader {
             } catch (apiError) {
                 console.warn('No se pudo conectar con la API. Cargando desde archivo local...');
                 const localRes = await fetch('/data/threejs_blocks.blocks.json');
-                blocks = await localRes.json();
+                let allBlocks = await localRes.json();
+                // Filtrar solo los bloques del nivel deseado (por ejemplo, level == 2)
+                blocks = allBlocks.filter(b => b.level === level);
                 console.log('Datos cargados desde archivo local:', blocks.length);
             }
 
@@ -63,27 +66,27 @@ export default class ToyCarLoader {
                 console.warn('Bloque sin nombre:', block);
                 return;
             }
-    
+
             const resourceKey = block.name;
             const glb = this.resources.items[resourceKey];
-    
+
             if (!glb) {
                 console.warn(`Modelo no encontrado: ${resourceKey}`);
                 return;
             }
-    
+
             const model = glb.scene.clone();
-    
+
             // 🔵 MARCAR modelo como perteneciente al nivel
             model.userData.levelObject = true;
-    
+
             // Eliminar cámaras y luces embebidas
             model.traverse((child) => {
                 if (child.isCamera || child.isLight) {
                     child.parent.remove(child);
                 }
             });
-    
+
             // 🎯 Manejo de carteles
             const cube = model.getObjectByName('Cylinder001');
             if (cube) {
@@ -103,18 +106,18 @@ export default class ToyCarLoader {
                     cube.material.needsUpdate = true;
                 });
             }
-    
+
             // 🧵 Integración especial para modelos baked
             if (block.name.includes('baked')) {
                 const bakedTexture = new THREE.TextureLoader().load('/textures/baked.jpg');
                 bakedTexture.flipY = false;
                 bakedTexture.encoding = THREE.sRGBEncoding;
-    
+
                 model.traverse(child => {
                     if (child.isMesh) {
                         child.material = new THREE.MeshBasicMaterial({ map: bakedTexture });
                         child.material.needsUpdate = true;
-    
+
                         if (child.name.toLowerCase().includes('portal')) {
                             this.experience.time.on('tick', () => {
                                 child.rotation.y += 0.01;
@@ -123,7 +126,7 @@ export default class ToyCarLoader {
                     }
                 });
             }
-    
+
             // 🎯 Si es un premio (coin)
             if (block.name.startsWith('coin')) {
                 const prize = new Prize({
@@ -132,21 +135,21 @@ export default class ToyCarLoader {
                     scene: this.scene,
                     role: block.role || "default"
                 });
-    
+
                 // 🔵 MARCAR modelo del premio
                 prize.model.userData.levelObject = true;
-    
+
                 this.prizes.push(prize);
                 // this.scene.add(prize.model);
                 return;
             }
-    
+
             this.scene.add(model);
-    
+
             // Físicas
             let shape;
             let position = new THREE.Vector3();
-    
+
             if (precisePhysicsModels.includes(block.name)) {
                 shape = createTrimeshShapeFromModel(model);
                 if (!shape) {
@@ -164,20 +167,20 @@ export default class ToyCarLoader {
                 center.y -= size.y / 2;
                 position.copy(center);
             }
-    
+
             const body = new CANNON.Body({
                 mass: 0,
                 shape: shape,
                 position: new CANNON.Vec3(position.x, position.y, position.z),
                 material: this.physics.obstacleMaterial
             });
-    
+
             // 🔵 MARCAR cuerpo físico
             body.userData = { levelObject: true };
-            model.userData.physicsBody = body;   
-            body.userData.linkedModel = model; 
+            model.userData.physicsBody = body;
+            body.userData.linkedModel = model;
             this.physics.world.addBody(body);
         });
     }
-    
+
 }
